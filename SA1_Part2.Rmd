@@ -1,0 +1,130 @@
+---
+title: "SA1 Part 2"
+author: "Angelo M. Navarro"
+date: "2026-10-11"
+output: html_document
+---
+# Analyze the specified Bitcoin and Ethereum return datasets using distribution fitting and normality testing 
+
+## Calibrating the Dataset
+```{r}
+library(readr)
+btc_raw <- read_csv("C:/Users/Angelo/Downloads/archive/btcusd_1-min_data.csv")
+View(btc_raw)
+Timestamp <- btc_raw$Timestamp
+Open <- btc_raw$Open
+High <- btc_raw$High
+Low <- btc_raw$Low
+Close <- btc_raw$Close
+Volume <- btc_raw$Volume
+```
+
+We retreive the necessary packages:
+
+```{r}
+library(anytime)
+library(plyr)
+library(dplyr)
+library(dgof)
+library(fitdistrplus)
+library(VGAM)
+library(data.table)
+library(EnvStats)
+library(ggplot2)
+library(tsallisqexp)
+library(poweRlaw)
+library(fitur)
+library(lubridate)
+```
+
+**Extracting data from January 1, 2012 to September 15, 2026** 
+with the *mutate* and and *as_datetime* functions from the dplyr and lubridate packages, respectively:
+```{r}
+btc_clean <- btc_raw %>%
+  mutate(datetime = as_datetime(Timestamp))
+#mutate() lets us modify the Timestamp column, while as_datetime() makes the column's format more readable 
+
+start_dt <- ymd_hms("2012-01-01 00:00:00")
+end_dt   <- ymd_hms("2026-09-15 23:59:59")
+
+bitcoin_filtered <- btc_clean %>%
+  filter(datetime >= start_dt & datetime <= end_dt)
+```
+
+Let's view the summary of our data:
+```{r}
+summary(bitcoin_filtered)
+```
+
+## Calculating Bitcoin's returns per minute:
+Return per minute measures the percentage (or logarithmic) change in price from one minute to the next,
+which means it can be calculated by *natural log* of (*Current Price* divided by *Previous Price*)
+```{r}
+btc_returns <- btc_clean %>%
+  mutate(Returns = log(Close / lag(Close)))
+
+#mutate() creates a "return" column for our data frame. lag(Close) gives previous values from the Close column.
+```
+
+**Let's construct a histogram of the returns:**
+```{r}
+NAless_Returns <- btc_returns$Returns[!is.na(btc_returns$Returns)]
+hist((NAless_Returns), xlab = "Returns", xlim=c(-0.15,0.15))
+```
+
+## Which PDF is most applicable?
+### Normal
+```{r}
+normal_returns <- rnorm(length(NAless_Returns), mean = mean(NAless_Returns), sd = sd(NAless_Returns))
+
+ks_norm <- ks.test(NAless_Returns, normal_returns)
+ks_norm
+```
+
+### Student
+```{r}
+student_returns <- rt(length(NAless_Returns), length(NAless_Returns))
+
+ks_stud <- ks.test(NAless_Returns, student_returns)
+ks_stud
+```
+
+### Laplace
+```{r}
+laplace_returns <- rlaplace(length(NAless_Returns), mean(NAless_Returns), sd(NAless_Returns))
+
+ks_lap <- ks.test(NAless_Returns, laplace_returns)
+ks_lap
+```
+
+### Tsallis
+```{r}
+tsallis_returns <- rtsal(length(NAless_Returns), mean(NAless_Returns), sd(NAless_Returns))
+
+ks_tsal <- ks.test(NAless_Returns, tsallis_returns)
+ks_tsal
+```
+
+### PowerLaw
+```{r}
+PowerLaw_returns <- rplcon(length(NAless_Returns), -0.3, sd(NAless_Returns))
+
+ks_PL <- ks.test(NAless_Returns, PowerLaw_returns)
+ks_PL
+```
+
+## Interpretation
+The PDF with the smallest D is the most applicable in this situation. Let's check each PDF:
+```{r}
+ks_norm$statistic
+ks_stud$statistic
+ks_lap$statistic
+ks_tsal$statistic
+ks_PL$statistic
+
+all_ks <- c(ks_norm$statistic, ks_stud$statistic, ks_lap$statistic, ks_tsal$statistic, ks_PL$statistic)
+min(all_ks)
+```
+## Conclusion
+Based on these results, the Laplace Distribution is the most fitting for Bitcoin’s returns for trading data every minute, from January 1, 2012 to September 15, 2026.
+
