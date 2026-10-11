@@ -1,0 +1,43 @@
+---
+title: "SA1 2_2"
+author: "Angelo M. Navarro"
+date: "2026-10-11"
+output: html_document
+---
+
+# Shapiro-Wilk Normality Test
+Test using Shapiro-Wilk normality test the Ethereum returns for trading data every five minutes, from August 7, 2015 to September 15, 2026.
+
+## Calibrating the Dataset
+```{r}
+library(dplyr)
+library(lubridate)
+library(readr)
+eth_raw <- read_csv("C:/Users/Angelo/Downloads/ETHUSDT-5m-1483228800000-1788825599999-selected-columns.csv")
+View(eth_raw)
+Eth_Close <- eth_raw$Close
+Close_Time <- eth_raw$`Close time`
+```
+```{r}
+eth_clean <- eth_raw %>%
+  mutate(datetime = as_datetime(eth_raw$`Close time`)) %>%
+  arrange(datetime) %>%
+  filter(datetime >= ymd_hms("2026-09-15 23:59:59"))
+```
+
+## We get the Ethereum returns
+```{r}
+eth_returns <- eth_clean %>%
+  mutate(E_Returns = log(Close / lag(Close))) %>%
+  filter(!is.na(E_Returns) & is.finite(E_Returns))
+```
+
+## Shapiro-Wilk Test
+Since the Shapiro-Wilk test is limited to 5000 samples in R, we select 5000 random samples from the dataset.
+```{r}
+eth_sample <- eth_returns %>% slice_sample(n = 5000)
+
+shapiro_result <- shapiro.test(eth_sample$E_Returns)
+shapiro_result
+```
+
