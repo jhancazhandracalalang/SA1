@@ -1,0 +1,3 @@
+"Comparison","Conditional_Estimate","Original_Estimate","Theoretical_Conditional","Theoretical_Original"
+"P(X=4 | X>3) versus P(X=1)",0.618296529968454,0.6045,0.6,0.6
+"P(X=5 | X>3) versus P(X=2)",0.228706624605678,0.234,0.24,0.24
